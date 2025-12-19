@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>微岩石调色系统 v2.4 (发货贴纸优化版)</title>
+  <style>
+    :root { --primary:#2c3e50; --accent:#3498db; --bg:#f4f7f6; --shipment:#e67e22; --success:#27ae60; }
+    * { box-sizing: border-box; }
+    body{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:#333; margin:0; padding:20px; }
+    .container{ max-width:920px; margin:0 auto; background:#fff; padding:28px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,.08); }
+    h1{ text-align:center; color:var(--primary); border-bottom:2px solid #eee; padding-bottom:10px; margin:0 0 14px; }
+    h2{ font-size:1.15em; color:var(--accent); margin:22px 0 10px; border-left: 4px solid var(--accent); padding-left: 10px; }
+    h2.shipment-title { color: var(--shipment); border-left-color: var(--shipment); }
+
+    .form-section{ margin-bottom:18px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
+    .row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+    .col{ flex:1; min-width:160px; }
+    label{ display:block; margin-bottom:6px; font-weight:700; font-size:.9em; }
+    input,select{ width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:1em; }
+    input:focus,select:focus{ outline:none; border-color:var(--accent); }
+
+    table{ width:100%; border-collapse:collapse; margin-top:8px; }
+    th,td{ padding:12px; text-align:left; border-bottom:1px solid #eee; }
+    th{ background:#f8f9fa; color:var(--primary); font-weight:700; }
+    
+    td.highlight { color: var(--accent); font-weight: bold; }
+
+    .btn{ border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:.95em; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
+    .btn-add{ background:var(--accent); color:#fff; }
+    .btn-remove{ background:#e74c3c; color:#fff; padding:8px 10px; border-radius:8px; }
+    .btn-img{ background:#8e44ad; color:#fff; }
+    .btn-csv{ background:var(--success); color:#fff; margin-right: 10px; }
+    .btn-ship{ background:var(--shipment); color:#fff; width: 100%; font-weight: bold; font-size: 1.1em; padding: 14px; }
+
+    .tip{ font-size:.92em; color:#555; background:#eef2f3; padding:10px 12px; border-radius:10px; margin-bottom: 15px; }
+
+    .result-panel{ margin-top:14px; border:2px dashed #bdc3c7; background:#fff; padding:18px; border-radius:12px; }
+    .result-header{ display:flex; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:12px; gap:10px; }
+    
+    .shipment-box { background: #fffdf0; border: 2px solid var(--shipment); padding: 15px; border-radius: 12px; margin-top: 15px; }
+    .shipment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #d35400; }
+    .shipment-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .shipment-item { background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid var(--shipment); }
+    .shipment-item b { font-size: 1.2em; color: #d35400; display: block; margin-top: 4px; }
+
+    .formula-list{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace; font-size:1.05em; line-height:1.55; }
+    .formula-item{ display:flex; justify-content:space-between; border-bottom:1px dotted #ccc; padding:6px 0; gap:10px; }
+    .base-info{ font-size:.92em; color:#666; margin-bottom:10px; background:#f9f9f9; padding:10px 12px; border-radius:10px; }
+
+    @media (max-width: 600px){
+      th,td{ white-space:nowrap; padding:10px; }
+      table{ min-width: 680px; }
+      th:nth-child(1), td:nth-child(1){ min-width: 140px; }
+      .modal-card { width: 95%; }
+    }
+
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999; }
+    .modal.open{ display:flex; }
+    .modal-card{ background:#fff; width:min(560px, 100%); border-radius:16px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+    .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .modal-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 10px;}
+    .modal-imgwrap{ background:#e0e0e0; border:1px solid #ccc; border-radius:12px; padding:20px; overflow:auto; display: flex; justify-content: center; }
+    .modal-imgwrap img{ max-width:100%; height:auto; display:block; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>微岩石调色系统 v2.4 (发货贴纸优化版)</h1>
+
+  <div class="tip">
+    💡 <b>流程说明：</b> 
+    <br>1. 填写样板数据 -> 生成“留档贴纸”或导出表格。
+    <br>2. 样板确认后 -> 到底部选择大货规格 -> 生成“发货贴纸”。
+  </div>
+
+  <!-- 1. 基础信息 -->
+  <div class="form-section">
+    <h2>1. 样板基础信息</h2>
+    <div class="row">
+      <div class="col">
+        <label>项目名称</label>
+        <input id="projectName" type="text" value="深圳太子湾" />
+      </div>
+      <div class="col">
+        <label>打样日期</label>
+        <input id="makeDate" type="date" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>干粉材料</label>
+        <select id="powderType">
+          <option value="MR02" selected>MR02 (中)</option>
+          <option value="MR01">MR01 (细)</option>
+          <option value="MR03">MR03 (粗)</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>样板干粉重量 (g)</label>
+        <select id="powderWeight">
+          <option value="50">50g</option>
+          <option value="100" selected>100g</option>
+          <option value="150">150g</option>
+          <option value="200">200g</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>树脂比例</label>
+        <select id="resinRatio">
+          <option value="30" selected>30%</option>
+          <option value="0">0%</option>
+          <option value="60">60%</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>加水量 (g)</label>
+        <input id="waterAmount" type="number" value="30" />
+      </div>
+    </div>
+    
+    <div class="row">
+       <div class="col">
+         <label>罩面亮度</label>
+         <select id="topcoatGloss">
+           <option value="12" selected>12度</option>
+           <option value="7">7度</option>
+           <option value="20">20度</option>
+         </select>
+       </div>
+       <div class="col">
+         <label>打磨砂纸</label>
+         <select id="sandingGrit">
+           <option value="不打磨" selected>不打磨</option>
+           <option value="120#">120#</option>
+           <option value="240#">240#</option>
+           <option value="320#">320#</option>
+           <option value="400#">400#</option>
+         </select>
+       </div>
+       <div class="col" style="flex:2;"></div>
+    </div>
+  </div>
+
+  <!-- 2. 调色数据 -->
+  <div class="form-section">
+    <h2>2. 样板调色数据</h2>
+    <datalist id="colors_list"></datalist>
+
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">色号</th>
+          <th style="width:25%">稀释比例</th>
+          <th style="width:20%">样板加入量(g)</th>
+          <th style="width:20%">标准单位 (g/kg)</th>
+          <th style="width:5%"></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="col"><button class="btn btn-add" onclick="addRow()">+ 添加颜色</button></div>
+    </div>
+  </div>
+
+  <!-- 3. 样板预览 -->
+  <div class="form-section">
+    <h2>3. 样板留档预览</h2>
+    <div class="result-panel">
+      <div class="result-header">
+        <div><b id="displayProject">项目名称</b></div>
+        <div><span id="displayDate"></span></div>
+      </div>
+      <div class="base-info" id="displayBase">
+        <div id="displayBaseLine1"></div>
+        <div id="displayBaseLine2"></div>
+      </div>
+      <div id="finalFormula" class="formula-list">
+        <!-- 动态生成 -->
+      </div>
+      <div style="text-align:right; margin-top:10px;">
+        <button class="btn btn-csv" onclick="exportToCSV()">📥 导出 CSV (Excel)</button>
+        <button class="btn btn-img" onclick="generateSampleSticker()">🖼️ 生成样板留档贴纸 (50×70mm)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 大货发货计算 -->
+  <div class="form-section">
+    <h2 class="shipment-title">4. 大货生产 & 色浆发货计算</h2>
+    <div class="row" style="align-items: flex-end;">
+      <div class="col">
+        <label style="color:#d35400;">选择大货干粉规格 (kg/瓶)</label>
+        <select id="prodWeight" style="border:2px solid #d35400; background:#fffcf5; font-weight:bold; font-size:1.1em; color:#d35400;">
+          <option value="1">1 kg / 瓶</option>
+          <option value="2">2 kg / 瓶</option>
+          <option value="4" selected>4 kg / 瓶</option>
+          <option value="8">8 kg / 瓶</option>
+          <option value="10">10 kg / 瓶</option>
+          <option value="16">16 kg / 瓶</option>
+        </select>
+      </div>
+      <div class="col" style="flex:2">
+         <div class="tip" style="margin:0; background:#fff8e1; color:#d35400;">
+            计算公式：步骤2的 <b>g/kg</b> 标准值 × 左侧 <b>kg数</b>。
+         </div>
+      </div>
+    </div>
+
+    <div class="shipment-box">
+       <div class="shipment-header">
+          <strong style="font-size:1.1em;">色浆发货清单 (单瓶用量)</strong>
+          <span id="shipmentTag" style="background:#d35400; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.85em;">4kg规格</span>
+       </div>
+       <div id="shipmentList" class="shipment-list">
+          <!-- 动态生成发货数据 -->
+          <div style="color:#999; padding:10px;">请先在上方添加颜色...</div>
+       </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <button class="btn btn-ship" onclick="generateShipmentSticker()">📦 生成色浆发货贴纸 (50×70mm)</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- 图片弹窗 -->
+<div class="modal" id="imgModal" onclick="closeModal(event)">
+  <div class="modal-card">
+    <div class="modal-head">
+      <b id="modalTitle">贴纸预览</b>
+      <button class="btn" onclick="closeModal(event)" style="background:#eee;">关闭</button>
+    </div>
+    <div class="modal-actions">
+      <a id="downloadLink" class="btn btn-img" href="#" download="sticker.png">下载 PNG</a>
+      <span style="font-size:.9em; color:#666; align-self:center; margin-left:auto;">iPhone: 长按图片保存</span>
+    </div>
+    <div class="modal-imgwrap">
+      <img id="stickerImg" alt="sticker" />
+    </div>
+  </div>
+</div>
+
+<script>
+  // 常用色号
+  const colorCodes = ['NSC01','NSC02','NSC03','NSC04','NSC05','NSC113','NSC114','NSC115','NSC116','NSC117','XY','XR','Xk','NC','KF','TG','yama','W水','W世'];
+  document.getElementById('colors_list').innerHTML = colorCodes.map(c => `<option value="${c}"></option>`).join('');
+
+  // 初始化日期
+  function setToday(){
+    const d = new Date();
+    const iso = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    document.getElementById('makeDate').value = iso;
+  }
+
+  // 页面加载
+  window.addEventListener('load', () => {
+    setToday();
+    // 默认示例数据
+    addRow('NSC05', '0.1', 0.7);
+    addRow('NSC03', '0.1', 0.7);
+    addRow('NSC117', '0.1', 0.3);
+    updateAll();
+  });
+
+  // 监听所有输入变化
+  const allInputs = ['projectName','makeDate','powderType','powderWeight','resinRatio','waterAmount','topcoatGloss','sandingGrit','prodWeight'];
+  allInputs.forEach(id => {
+    document.getElementById(id).addEventListener('input', updateAll);
+    document.getElementById(id).addEventListener('change', updateAll);
+  });
+
+  // 核心：添加行
+  function addRow(code='', ratioVal='0.1', weight=''){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" list="colors_list" class="input-code" value="${code}" placeholder="色号" /></td>
+      <td>
+        <select class="input-ratio">
+          <option value="1" ${Number(ratioVal)===1?'selected':''}>原浆</option>
+          <option value="0.1" ${Number(ratioVal)===0.1?'selected':''}>1:10</option>
+          <option value="0.01" ${Number(ratioVal)===0.01?'selected':''}>1:100</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.01" class="input-weight" value="${weight}" placeholder="0.00" /></td>
+      <td class="highlight"><span class="result-cell">-</span></td>
+      <td><button class="btn-remove" onclick="removeRow(this)">×</button></td>
+    `;
+    document.getElementById('tableBody').appendChild(tr);
+
+    // 绑定行内事件
+    tr.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', updateAll);
+        el.addEventListener('change', updateAll);
+    });
+    updateAll();
+  }
+
+  function removeRow(btn){
+    btn.closest('tr').remove();
+    updateAll();
+  }
+
+  // 全局更新入口
+  function updateAll() {
+    calculateStandard(); // 计算 g/kg
+    updateSamplePanel(); // 更新样板预览UI
+    updateShipmentPanel(); // 更新大货发货UI
+  }
+
+  // 1. 计算标准单位 (g/kg) 并显示在表格中
+  function calculateStandard(){
+    const powderWeight = Number(document.getElementById('powderWeight').value);
+    const powderKg = powderWeight / 1000;
+    
+    document.querySelectorAll('#tableBody tr').forEach(row => {
+      const ratioVal = Number(row.querySelector('.input-ratio').value || 0);
+      const weight = Number(row.querySelector('.input-weight').value || 0);
+      const cell = row.querySelector('.result-cell');
+      
+      if (powderKg > 0 && weight) {
+        // 公式：(实际加入g * 稀释比例) / 干粉kg数 = 每公斤干粉需要的原浆g数
+        const std = (weight * ratioVal) / powderKg;
+        // 存储在dataset里供后续调用，避免重复计算
+        row.dataset.std = std; 
+        row.dataset.code = row.querySelector('.input-code').value;
+        cell.textContent = std.toFixed(2);
+      } else {
+        row.dataset.std = 0;
+        cell.textContent = '-';
+      }
+    });
+  }
+
+  // 2. 更新样板预览面板
+  function updateSamplePanel(){
+    const project = document.getElementById('projectName').value || '未命名项目';
+    const date = document.getElementById('makeDate').value;
+    const powderType = document.getElementById('powderType').value;
+    const powderW = document.getElementById('powderWeight').value;
+    const resin = (Number(powderW) * document.getElementById('resinRatio').value / 100).toFixed(1);
+    const water = document.getElementById('waterAmount').value;
+    const gloss = document.getElementById('topcoatGloss').value;
+    const grit = document.getElementById('sandingGrit').value;
+
+    document.getElementById('displayProject').textContent = project;
+    document.getElementById('displayDate').textContent = date;
+    document.getElementById('displayBaseLine1').textContent = `${powderType} (${powderW}g) 树脂${resin}g 水${water}g`;
+    document.getElementById('displayBaseLine2').textContent = `罩面${gloss}度  砂纸${grit}`;
+
+    // 列表生成
+    const rows = document.querySelectorAll('#tableBody tr');
+    let html = '';
+    rows.forEach(row => {
+       const code = row.querySelector('.input-code').value;
+       const std = parseFloat(row.dataset.std || 0);
+       const ratioTxt = row.querySelector('.input-ratio').selectedOptions[0].text;
+       const w = row.querySelector('.input-weight').value;
+       
+       if(code && std > 0) {
+           html += `<div class="formula-item">
+             <span>${code} <small style="color:#888">(${ratioTxt}:${w}g)</small></span>
+             <span><b>${std.toFixed(2)}</b> g/kg</span>
+           </div>`;
+       }
+    });
+    document.getElementById('finalFormula').innerHTML = html || '<div style="color:#999;text-align:center">暂无有效数据</div>';
+  }
+
+  // 3. 更新大货发货面板
+  function updateShipmentPanel() {
+      const prodKg = Number(document.getElementById('prodWeight').value);
+      document.getElementById('shipmentTag').textContent = `用量 ${prodKg}kg/瓶`;
+
+      const rows = document.querySelectorAll('#tableBody tr');
+      let html = '';
+      let hasData = false;
+
+      rows.forEach(row => {
+          const code = row.querySelector('.input-code').value;
+          const std = parseFloat(row.dataset.std || 0); // 获取 g/kg
+          
+          if(code && std > 0) {
+              hasData = true;
+              // 核心计算：标准量 * 大货公斤数
+              const finalWeight = std * prodKg; 
+              
+              html += `
+                <div class="shipment-item">
+                    <div style="font-weight:bold; color:#555;">${code}</div>
+                    <div><b>${finalWeight.toFixed(2)} g</b></div>
+                </div>
+              `;
+          }
+      });
+
+      document.getElementById('shipmentList').innerHTML = hasData ? html : '<div style="grid-column:1/-1; color:#999; text-align:center;">暂无有效配方数据</div>';
+  }
+
+  // ========== 新增：导出 CSV (Excel) ==========
+  function exportToCSV() {
+    const project = document.getElementById('projectName').value || '未命名';
+    const date = document.getElementById('makeDate').value;
+    const base1 = document.getElementById('displayBaseLine1').textContent;
+    const base2 = document.getElementById('displayBaseLine2').textContent;
+
+    // 添加 BOM \uFEFF 解决 Excel 中文乱码问题
+    let csvContent = "\uFEFF"; 
+    
+    csvContent += `项目名称,${project}\n`;
+    csvContent += `打样日期,${date}\n`;
+    csvContent += `基础配方,${base1}\n`;
+    csvContent += `工艺要求,${base2}\n\n`;
+    
+    csvContent += "色号,稀释比例,实际加入量(g),标准单位(g/kg)\n";
+
+    const rows = document.querySelectorAll('#tableBody tr');
+    rows.forEach(row => {
+        const code = row.querySelector('.input-code').value;
+        const ratioTxt = row.querySelector('.input-ratio').selectedOptions[0].text;
+        const weight = row.querySelector('.input-weight').value;
+        const std = parseFloat(row.dataset.std || 0).toFixed(2);
+        
+        if(code && weight) {
+           // CSV 格式：色号,比例,实际重,标准重
+           csvContent += `${code},${ratioTxt},${weight},${std}\n`;
+        }
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${project}_配方表_${date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // ========== Canvas 绘图通用逻辑 (50x70mm) ==========
+  function mmToPx(mm, dpi=203) { return Math.round(mm / 25.4 * dpi); }
+  
+  // 文字换行工具
+  function wrapText(ctx, text, maxWidth){
+    const chars = String(text).split('');
+    const lines = [];
+    let line = '';
+    for (const ch of chars){
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line = ch;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // 通用画板初始化
+  function initCanvas() {
+      const dpi = 203; // 热敏打印机常用DPI
+      const W = mmToPx(50, dpi);
+      const H = mmToPx(70, dpi);
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      // 白底
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#000';
+      return { canvas, ctx, W, H, ppm: dpi/25.4 };
+  }
+
+  // A. 生成样板贴纸 (更新版：下半部字体加大)
+  function generateSampleSticker() {
+      const { canvas, ctx, W, H, ppm } = initCanvas();
+      const mx = 2*ppm; 
+      let y = 3*ppm;
+
+      // 1. 标题：项目
+      const project = document.getElementById('projectName').value || '未命名';
+      ctx.fillStyle = '#000';
+      ctx.font = `900 ${3.5*ppm}px sans-serif`; // 稍微调小一点点给下面腾位置
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      
+      const titleLines = wrapText(ctx, project, W-4*ppm);
+      titleLines.slice(0,2).forEach(l => { 
+          ctx.fillText(l, W/2, y); 
+          y+=3.8*ppm; 
+      });
+
+      // 2. 日期
+      ctx.font = `${2.4*ppm}px sans-serif`;
+      ctx.fillText(document.getElementById('makeDate').value, W/2, y);
+      y += 3.5*ppm;
+
+      // 获取数据
+      const rows = document.querySelectorAll('#tableBody tr');
+
+      // 3. 上半部分：标准单位 (g/kg) - 保持清晰即可
+      ctx.font = `bold ${3.0*ppm}px sans-serif`; 
+      rows.forEach(row => {
+          const code = row.dataset.code;
+          const std = parseFloat(row.dataset.std||0);
+          if(code && std > 0) {
+              ctx.textAlign = 'left';
+              ctx.fillText(code, mx, y);
+              
+              ctx.textAlign = 'right';
+              ctx.fillText(`${std.toFixed(2)} g/kg`, W-mx, y);
+              y += 3.5*ppm;
+          }
+      });
+
+      y += 1.0*ppm;
+
+      // 4. 分割线
+      ctx.beginPath(); 
+      ctx.moveTo(mx,y); 
+      ctx.lineTo(W-mx,y); 
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke(); 
+      y+=3.0*ppm;
+
+      // 5. 实验基础信息 (加粗，加大)
+      const base1 = document.getElementById('displayBaseLine1').textContent;
+      const base2 = document.getElementById('displayBaseLine2').textContent;
+      
+      ctx.textAlign = 'left';
+      // 字体加大到 2.6ppm 并加粗
+      ctx.font = `bold ${2.6*ppm}px sans-serif`; 
+      
+      wrapText(ctx, base1, W-2*mx).forEach(l => { ctx.fillText(l, mx, y); y+=3.2*ppm; });
+      wrapText(ctx, base2, W-2*mx).forEach(l => { ctx.fillText(l, mx, y); y+=3.8*ppm; });
+
+      // 6. 下半部分：实验具体加入量 (重点：加大字体，方便师傅看)
+      // 字体加大到 3.4ppm，与上半部主数据相当，甚至更大
+      ctx.font = `bold ${3.4*ppm}px sans-serif`; 
+      
+      rows.forEach(row => {
+          const code = row.dataset.code;
+          const std = parseFloat(row.dataset.std||0);
+          
+          if(code && std > 0) {
+              const ratioTxt = row.querySelector('.input-ratio').selectedOptions[0].text;
+              const weight = row.querySelector('.input-weight').value;
+              
+              // 左侧：色号 (比例)
+              ctx.textAlign = 'left';
+              // 比例字稍微小一点点，避免太长换行
+              const leftText = `${code} (${ratioTxt})`;
+              
+              // 如果文字太长，稍微缩小一点字号
+              if(ctx.measureText(leftText).width > (W/2 + 10)) {
+                 ctx.font = `bold ${2.8*ppm}px sans-serif`;
+              } else {
+                 ctx.font = `bold ${3.4*ppm}px sans-serif`;
+              }
+              ctx.fillText(leftText, mx, y);
+              
+              // 右侧：实际克重 (保持大字体)
+              ctx.font = `bold ${3.4*ppm}px sans-serif`;
+              ctx.textAlign = 'right';
+              ctx.fillText(`${weight}g`, W-mx, y);
+              
+              y += 4.0*ppm; // 行高增加
+          }
+      });
+
+      openModal(canvas, "样板留档贴纸");
+  }
+
+  // B. 生成发货贴纸 (优化版：项目名置顶，用量白底黑字)
+  function generateShipmentSticker() {
+      const { canvas, ctx, W, H, ppm } = initCanvas();
+      const mx = 2*ppm; 
+      let y = 3*ppm; 
+
+      const project = document.getElementById('projectName').value || '未命名';
+      const prodKg = document.getElementById('prodWeight').value;
+      const date = document.getElementById('makeDate').value;
+
+      // 1. 顶部改为：项目名称 (加粗，居中)
+      ctx.fillStyle = '#000';
+      ctx.font = `900 ${3.8*ppm}px sans-serif`; 
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      
+      // 处理长项目名换行
+      const titleLines = wrapText(ctx, `项目：${project}`, W-mx);
+      titleLines.forEach(l => {
+         ctx.fillText(l, W/2, y);
+         y += 5.0*ppm;
+      });
+      // y += 1.0*ppm;
+
+      // 2. 规格框 (改动：白底黑字，字体加大)
+      // 去掉 fillRect 黑色背景
+      const specText = `用量: ${prodKg}kg / 瓶`;
+      
+      ctx.fillStyle = '#000'; // 黑字
+      ctx.font = `900 ${5.0*ppm}px sans-serif`; // 字体加大 (原来是3.0)
+      ctx.textBaseline = 'top';
+      ctx.fillText(specText, W/2, y); 
+      
+      y += 6.5*ppm; // 留出空间
+
+      // 3. 信息区域 (保留日期，去掉重复的项目名)
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'left';
+      ctx.font = `${2.4*ppm}px sans-serif`;
+      
+      // 原来的项目名行现在在顶部，所以这里只保留日期，保持“其余不改”的结构
+      ctx.fillText(`日期: ${date}`, mx, y);
+      y += 4*ppm; 
+
+      // 4. 分割线
+      ctx.beginPath(); 
+      ctx.moveTo(mx, y); 
+      ctx.lineTo(W-mx, y); 
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      y += 2*ppm;
+
+      // 5. 色浆列表
+      const rows = document.querySelectorAll('#tableBody tr');
+      let hasItem = false;
+
+      rows.forEach(row => {
+          const code = row.dataset.code;
+          const std = parseFloat(row.dataset.std || 0);
+          
+          if(code && std > 0) {
+              hasItem = true;
+              const finalW = (std * Number(prodKg)).toFixed(2); 
+              
+              ctx.textAlign = 'left';
+              ctx.font = `bold ${3.2*ppm}px sans-serif`;
+              ctx.fillText(code, mx, y);
+
+              ctx.textAlign = 'right';
+              ctx.font = `900 ${3.8*ppm}px sans-serif`; 
+              ctx.fillText(`${finalW}g`, W-mx, y); 
+
+              y += 5.0*ppm; 
+          }
+      });
+
+      if(!hasItem) {
+        ctx.textAlign = 'center';
+        ctx.font = `${2.5*ppm}px sans-serif`;
+        ctx.fillText("无色浆数据", W/2, y+5*ppm);
+      }
+
+      openModal(canvas, `发货贴纸 (${prodKg}kg)`);
+  }
+
+  function openModal(canvas, title) {
+    const dataUrl = canvas.toDataURL('image/png');
+    document.getElementById('stickerImg').src = dataUrl;
+    document.getElementById('downloadLink').href = dataUrl;
+    document.getElementById('downloadLink').download = `${title}.png`;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('imgModal').classList.add('open');
+  }
+
+  function closeModal(e) {
+    if (e) e.stopPropagation();
+    document.getElementById('imgModal').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>
